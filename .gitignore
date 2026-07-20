@@ -1,7 +1,8 @@
-# Databases
+# Databases and Data Exports
 *.db
 *.sqlite
 *.sqlite3
+*.csv
 
 # Python caches
 __pycache__/
