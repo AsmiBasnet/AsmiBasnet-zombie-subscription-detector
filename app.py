@@ -1,4 +1,24 @@
 import streamlit as st
+import textwrap
+
+def st_html(html_str):
+    clean_lines = [line.strip() for line in html_str.split("\n")]
+    st.markdown("\n".join(clean_lines), unsafe_allow_html=True)
+
+def format_tenure(days):
+    if days is None:
+        return "N/A"
+    months = int(round(days / 30.0))
+    if months <= 0:
+        return "1 month"
+    if months < 12:
+        return f"{months} months"
+    years = months // 12
+    rem_months = months % 12
+    if rem_months == 0:
+        return f"{years} years" if years > 1 else f"{years} year"
+    else:
+        return f"{years} yr {rem_months} mo" 
 import sqlite3
 import pandas as pd
 import plotly.express as px
@@ -252,20 +272,20 @@ div[data-testid="stForm"] {{
 }}
 </style>
 """
-st.markdown(css, unsafe_allow_html=True)
+st_html(css)
 
 # 4. Helper to render KPI cards
 def render_metric_card(label, value, delta=None, delta_type="up"):
     cls = f"delta-{delta_type}"
     arrow = "↑" if delta_type == "up" else ("↓" if delta_type == "down" else "→")
     delta_html = f'<div class="metric-delta {cls}">{arrow} {delta}</div>' if delta else ""
-    st.markdown(f"""
+    st_html(f"""
     <div class="metric-card">
         <div class="metric-label">{label}</div>
         <div class="metric-value">{value}</div>
         {delta_html}
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 # 5. Database Connection and Ingestion Logic
 @st.cache_data
@@ -387,7 +407,7 @@ with head_left:
         <span class="brand-name">🧟 Zombie Subscription Detector</span>
     </div>
     <div class="brand-subtitle">Interactive recurring billing analytics and wasted spend visualization</div>
-    """, unsafe_allow_html=True)
+    """)
 with head_right:
     theme_label = "☀️ Light" if IS_DARK else "🌙 Dark"
     st.button(theme_label, on_click=toggle_theme, use_container_width=True)
@@ -494,11 +514,11 @@ chart_row_1_left, chart_row_1_right = st.columns([5, 5])
 
 # Donut Chart: Spend by Category
 with chart_row_1_left:
-    st.markdown("""
+    st_html("""
     <div class="chart-wrap">
         <div class="chart-title">Recurring Spend by Category</div>
         <div class="chart-subtitle">Distribution of total monthly spend across categories</div>
-    """, unsafe_allow_html=True)
+    """)
     
     category_df = df_active.groupby('category')['current_amount'].sum().reset_index()
     fig_donut = px.pie(
@@ -518,15 +538,15 @@ with chart_row_1_left:
         legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
     )
     st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
-    st.markdown("</div>", unsafe_allow_html=True)
+    st_html("</div>")
 
 # Bar Chart: Top Creeping Merchants
 with chart_row_1_right:
-    st.markdown("""
+    st_html("""
     <div class="chart-wrap">
         <div class="chart-title">Price Creep by Merchant</div>
         <div class="chart-subtitle">Average price increase of active subscriptions per provider</div>
-    """, unsafe_allow_html=True)
+    """)
     
     creep_df = df_active.groupby('merchant_name')['price_creep'].mean().reset_index().sort_values(by='price_creep', ascending=True)
     
@@ -542,17 +562,17 @@ with chart_row_1_right:
     fig_bar.update_layout(**PLOT_LAYOUT)
     fig_bar.update_traces(marker_line_width=0, opacity=0.85)
     st.plotly_chart(fig_bar, use_container_width=True, config={"displayModeBar": False})
-    st.markdown("</div>", unsafe_allow_html=True)
+    st_html("</div>")
 
 chart_row_2_left, chart_row_2_right = st.columns([5, 5])
 
 # Histogram: Tenure Distribution
 with chart_row_2_left:
-    st.markdown("""
+    st_html("""
     <div class="chart-wrap">
         <div class="chart-title">Subscription Tenure Distribution</div>
         <div class="chart-subtitle">Ages of active subscriptions (days), grouped by zombie flag</div>
-    """, unsafe_allow_html=True)
+    """)
     
     # Group active subscriptions into Tenure Bins and color by whether they are zombies
     df_active['Status'] = df_active['is_zombie'].apply(lambda z: 'Flagged Zombie' if z else 'Regular Active')
@@ -571,15 +591,15 @@ with chart_row_2_left:
     fig_hist.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5))
     fig_hist.update_traces(opacity=0.75, marker_line_width=0)
     st.plotly_chart(fig_hist, use_container_width=True, config={"displayModeBar": False})
-    st.markdown("</div>", unsafe_allow_html=True)
+    st_html("</div>")
 
 # Scatter/Line: Cumulative Wasted Spend / Price Creep over Time
 with chart_row_2_right:
-    st.markdown("""
+    st_html("""
     <div class="chart-wrap">
         <div class="chart-title">Wasted Spend Trajectory (Sample Users)</div>
         <div class="chart-subtitle">Cumulative monthly cost trajectories for top price-creeping zombies</div>
-    """, unsafe_allow_html=True)
+    """)
     
     # We will pick 5 top zombie candidate users with price creep to show their payment trajectories
     top_creepers = zombie_subs_df[zombie_subs_df['price_creep'] > 0].sort_values(by='total_amount_paid', ascending=False).head(5)
@@ -609,7 +629,7 @@ with chart_row_2_right:
     else:
         st.write("No price-creeping zombie subscriptions found under the selected strategy.")
         
-    st.markdown("</div>", unsafe_allow_html=True)
+    st_html("</div>")
 
 # 11. Detailed Data Explorer
 st.markdown("### Subscription Explorer")
@@ -633,12 +653,12 @@ with tabs[0]:
             if not badge_html:
                 badge_html = '<span class="badge badge-blue">ZOMBIE</span>'
                 
-            rows_html += f"""
+            rows_html += textwrap.dedent(f"""
             <tr>
                 <td>{r['user_name']}</td>
                 <td>{r['merchant_name']}</td>
                 <td><span class="badge badge-blue">{r['category']}</span></td>
-                <td>{r['tenure_days']} days</td>
+                <td>{format_tenure(r['tenure_days'])}</td>
                 <td>${r['start_amount']:.2f}</td>
                 <td>${r['current_amount']:.2f}</td>
                 <td style="color: {"#ef4444" if r['price_creep'] > 0 else "inherit"}; font-weight: {600 if r['price_creep'] > 0 else "inherit"}">
@@ -647,9 +667,9 @@ with tabs[0]:
                 <td style="font-weight: 600;">${r['total_amount_paid']:.2f}</td>
                 <td>{badge_html}</td>
             </tr>
-            """
+            """)
             
-        st.markdown(f"""
+        st_html(f"""
         <div class="data-table-container">
             <table class="data-table">
                 <thead>
@@ -670,7 +690,7 @@ with tabs[0]:
                 </tbody>
             </table>
         </div>
-        """, unsafe_allow_html=True)
+        """)
     else:
         st.info("No subscriptions flagged as zombie candidates under the current strategy.")
 
@@ -691,20 +711,20 @@ with tabs[1]:
     for _, r in df_filtered.head(100).iterrows(): # Cap rendering for performance
         status_badge = '<span class="badge badge-red">ZOMBIE</span>' if r['is_zombie'] else '<span class="badge badge-green">ACTIVE</span>'
         
-        rows_html += f"""
+        rows_html += textwrap.dedent(f"""
         <tr>
             <td>{r['user_name']}</td>
             <td>{r['merchant_name']}</td>
             <td>{r['category']}</td>
-            <td>{r['tenure_days']} days</td>
+            <td>{format_tenure(r['tenure_days'])}</td>
             <td>${r['current_amount']:.2f}</td>
             <td>${r['price_creep']:.2f}</td>
             <td>${r['total_amount_paid']:.2f}</td>
             <td>{status_badge}</td>
         </tr>
-        """
+        """)
         
-    st.markdown(f"""
+    st_html(f"""
     <div class="data-table-container">
         <table class="data-table">
             <thead>
@@ -724,7 +744,7 @@ with tabs[1]:
             </tbody>
         </table>
     </div>
-    """, unsafe_allow_html=True)
+    """)
     
     if len(df_filtered) > 100:
         st.caption(f"... and {len(df_filtered) - 100} more rows (capped at 100 rows for display performance).")
@@ -748,7 +768,7 @@ with tabs[2]:
             "Active Accounts": len(m_df),
             "Zombies": zombie_count,
             "Zombie %": f"{zombie_pct:.1f}%",
-            "Avg Tenure": f"{avg_tenure:.0f} days",
+            "Avg Tenure": format_tenure(avg_tenure),
             "Avg Price": f"${avg_price:.2f}",
             "Monthly Spend": f"${total_m_spend:,.2f}"
         })
@@ -757,7 +777,7 @@ with tabs[2]:
     
     rows_html = ""
     for _, r in df_m_stats.iterrows():
-        rows_html += f"""
+        rows_html += textwrap.dedent(f"""
         <tr>
             <td><b>{r['Merchant']}</b></td>
             <td>{r['Active Accounts']}</td>
@@ -767,9 +787,9 @@ with tabs[2]:
             <td>{r['Avg Price']}</td>
             <td>{r['Monthly Spend']}</td>
         </tr>
-        """
+        """)
         
-    st.markdown(f"""
+    st_html(f"""
     <div class="data-table-container">
         <table class="data-table">
             <thead>
@@ -788,4 +808,4 @@ with tabs[2]:
             </tbody>
         </table>
     </div>
-    """, unsafe_allow_html=True)
+    """)
